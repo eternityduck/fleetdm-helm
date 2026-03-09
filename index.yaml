@@ -1,0 +1,25 @@
+apiVersion: v1
+entries:
+  fleetdm:
+  - apiVersion: v2
+    appVersion: v4.81.0
+    created: "2026-03-09T20:12:52.72134816Z"
+    description: A Helm chart for deploying FleetDM with MySQL and Redis on Kubernetes
+    digest: b4966807d347f2f67943366e303da8cde373bb08ea71f89750d20a48b0f1d302
+    home: https://fleetdm.com
+    keywords:
+    - fleet
+    - fleetdm
+    - osquery
+    - mdm
+    - device-management
+    maintainers:
+    - name: FleetDM Helm Maintainer
+    name: fleetdm
+    sources:
+    - https://github.com/fleetdm/fleet
+    type: application
+    urls:
+    - https://github.com/eternityduck/fleetdm-helm/releases/download/fleetdm-1.0.0/fleetdm-1.0.0.tgz
+    version: 1.0.0
+generated: "2026-03-09T20:12:52.721360353Z"

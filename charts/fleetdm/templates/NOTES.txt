@@ -1,0 +1,32 @@
+
+FleetDM has been deployed successfully!
+
+Database migrations run automatically as an init container before the Fleet server starts.
+
+To access FleetDM:
+
+{{- if contains "NodePort" .Values.service.type }}
+  Get the application URL by running:
+  export NODE_PORT=$(kubectl get --namespace {{ .Release.Namespace }} -o jsonpath="{.spec.ports[0].nodePort}" services {{ include "fleetdm.fullname" . }})
+  export NODE_IP=$(kubectl get nodes --namespace {{ .Release.Namespace }} -o jsonpath="{.items[0].status.addresses[0].address}")
+  echo "FleetDM URL: http://$NODE_IP:$NODE_PORT"
+
+  For Minikube, use port-forward:
+  kubectl port-forward -n {{ .Release.Namespace }} svc/{{ include "fleetdm.fullname" . }} 8080:{{ .Values.service.port }}
+  echo "FleetDM URL: http://localhost:8080"
+{{- else if contains "ClusterIP" .Values.service.type }}
+  Access FleetDM using port-forward:
+  kubectl --namespace {{ .Release.Namespace }} port-forward svc/{{ include "fleetdm.fullname" . }} 8080:{{ .Values.service.port }}
+  echo "FleetDM URL: http://localhost:8080"
+{{- end }}
+
+First-time setup:
+1. Navigate to the FleetDM URL in your browser
+2. Create your admin account on the setup page
+3. Configure your organization settings
+4. Start enrolling devices!
+
+To verify the deployment:
+  kubectl get pods -n {{ .Release.Namespace }} -l "app.kubernetes.io/name={{ include "fleetdm.name" . }}"
+
+For more information, visit: https://fleetdm.com/docs

@@ -1,0 +1,23 @@
+# Helm
+charts/*/charts/
+charts/*/*.tgz
+.helm-packages/
+
+# Node
+node_modules/
+package-lock.json
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Temp files
+*.tmp
+*.bak

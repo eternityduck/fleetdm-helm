@@ -1,0 +1,101 @@
+## FleetDM Helm Chart Values
+## This chart deploys FleetDM server with MySQL and Redis
+
+## Fleet Server Configuration
+fleet:
+  replicaCount: 1
+
+  image:
+    repository: fleetdm/fleet
+    tag: "v4.81.0"
+    pullPolicy: IfNotPresent
+
+  imagePullSecrets: []
+
+  serviceAccount:
+    create: true
+    annotations: {}
+    name: ""
+
+  podAnnotations: {}
+
+  podSecurityContext:
+    runAsNonRoot: true
+    runAsUser: 3333
+    runAsGroup: 3333
+    fsGroup: 3333
+
+  securityContext:
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: false
+    capabilities:
+      drop:
+        - ALL
+
+  listenPort: 8080
+
+  resources:
+    limits:
+      cpu: 1
+      memory: 2Gi
+    requests:
+      cpu: 100m
+      memory: 256Mi
+
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+
+  tls:
+    enabled: false
+    secretName: fleet-tls
+
+  logging:
+    debug: false
+    json: true
+
+## Service configuration
+service:
+  type: NodePort
+  port: 8080
+  nodePort: 30080
+
+## MySQL configuration
+mysql:
+  image:
+    repository: mysql
+    tag: "8.0"
+    pullPolicy: IfNotPresent
+  auth:
+    database: fleet
+    username: fleet
+    password: fleet
+    rootPassword: rootpassword
+  persistence:
+    size: 8Gi
+  resources:
+    limits:
+      cpu: 1
+      memory: 1Gi
+    requests:
+      cpu: 100m
+      memory: 256Mi
+
+## Redis configuration
+redis:
+  image:
+    repository: redis
+    tag: "7-alpine"
+    pullPolicy: IfNotPresent
+  auth:
+    enabled: false
+    password: ""
+  persistence:
+    size: 2Gi
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 50m
+      memory: 64Mi

@@ -1,0 +1,159 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "fleetdm.fullname" . }}
+  labels:
+    {{- include "fleetdm.labels" . | nindent 4 }}
+    app.kubernetes.io/component: server
+spec:
+  replicas: {{ .Values.fleet.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "fleetdm.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: server
+  template:
+    metadata:
+      {{- with .Values.fleet.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        {{- include "fleetdm.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: server
+    spec:
+      {{- with .Values.fleet.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "fleetdm.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.fleet.podSecurityContext | nindent 8 }}
+      initContainers:
+        - name: wait-for-db
+          image: busybox:1.36
+          command: ['sh', '-c', 'until nc -z {{ include "fleetdm.mysql.host" . }} {{ include "fleetdm.mysql.port" . }}; do echo waiting for mysql; sleep 2; done']
+        - name: wait-for-redis
+          image: busybox:1.36
+          command: ['sh', '-c', 'until nc -z {{ include "fleetdm.redis.host" . }} {{ include "fleetdm.redis.port" . }}; do echo waiting for redis; sleep 2; done']
+        - name: db-migration
+          image: "{{ .Values.fleet.image.repository }}:{{ .Values.fleet.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.fleet.image.pullPolicy }}
+          command: ["fleet", "prepare", "db", "--no-prompt"]
+          env:
+            - name: FLEET_MYSQL_ADDRESS
+              value: "{{ include "fleetdm.mysql.host" . }}:{{ include "fleetdm.mysql.port" . }}"
+            - name: FLEET_MYSQL_DATABASE
+              value: {{ include "fleetdm.mysql.database" . | quote }}
+            - name: FLEET_MYSQL_USERNAME
+              value: {{ include "fleetdm.mysql.username" . | quote }}
+            - name: FLEET_MYSQL_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "fleetdm.mysql.secretName" . }}
+                  key: mysql-password
+            - name: FLEET_REDIS_ADDRESS
+              value: "{{ include "fleetdm.redis.host" . }}:{{ include "fleetdm.redis.port" . }}"
+            {{- if .Values.redis.auth.enabled }}
+            - name: FLEET_REDIS_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "fleetdm.fullname" . }}-redis
+                  key: redis-password
+            {{- end }}
+      containers:
+        - name: {{ .Chart.Name }}
+          securityContext:
+            {{- toYaml .Values.fleet.securityContext | nindent 12 }}
+          image: "{{ .Values.fleet.image.repository }}:{{ .Values.fleet.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.fleet.image.pullPolicy }}
+          command: ["fleet", "serve"]
+          env:
+            - name: FLEET_SERVER_ADDRESS
+              value: "0.0.0.0:{{ .Values.fleet.listenPort }}"
+            - name: FLEET_MYSQL_ADDRESS
+              value: "{{ include "fleetdm.mysql.host" . }}:{{ include "fleetdm.mysql.port" . }}"
+            - name: FLEET_MYSQL_DATABASE
+              value: {{ include "fleetdm.mysql.database" . | quote }}
+            - name: FLEET_MYSQL_USERNAME
+              value: {{ include "fleetdm.mysql.username" . | quote }}
+            - name: FLEET_MYSQL_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "fleetdm.mysql.secretName" . }}
+                  key: mysql-password
+            - name: FLEET_REDIS_ADDRESS
+              value: "{{ include "fleetdm.redis.host" . }}:{{ include "fleetdm.redis.port" . }}"
+            {{- if .Values.redis.auth.enabled }}
+            - name: FLEET_REDIS_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "fleetdm.fullname" . }}-redis
+                  key: redis-password
+            {{- end }}
+            {{- if .Values.fleet.tls.enabled }}
+            - name: FLEET_SERVER_TLS
+              value: "true"
+            - name: FLEET_SERVER_CERT
+              value: "/tls/tls.crt"
+            - name: FLEET_SERVER_KEY
+              value: "/tls/tls.key"
+            {{- else }}
+            - name: FLEET_SERVER_TLS
+              value: "false"
+            {{- end }}
+            - name: FLEET_LOGGING_DEBUG
+              value: {{ .Values.fleet.logging.debug | quote }}
+            - name: FLEET_LOGGING_JSON
+              value: {{ .Values.fleet.logging.json | quote }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.fleet.listenPort }}
+              protocol: TCP
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+              {{- if .Values.fleet.tls.enabled }}
+              scheme: HTTPS
+              {{- end }}
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+              {{- if .Values.fleet.tls.enabled }}
+              scheme: HTTPS
+              {{- end }}
+            initialDelaySeconds: 10
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 3
+          resources:
+            {{- toYaml .Values.fleet.resources | nindent 12 }}
+          {{- if .Values.fleet.tls.enabled }}
+          volumeMounts:
+            - name: tls
+              mountPath: /tls
+              readOnly: true
+          {{- end }}
+      {{- if .Values.fleet.tls.enabled }}
+      volumes:
+        - name: tls
+          secret:
+            secretName: {{ .Values.fleet.tls.secretName }}
+      {{- end }}
+      {{- with .Values.fleet.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.fleet.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.fleet.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

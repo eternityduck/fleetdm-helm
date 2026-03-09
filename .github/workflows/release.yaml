@@ -81,7 +81,7 @@ jobs:
           path: .helm-packages/
           if-no-files-found: warn
           retention-days: 30
-
+          include-hidden-files: true
       - name: Configure Git
         run: |
           git config user.name "$GITHUB_ACTOR"

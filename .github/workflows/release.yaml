@@ -78,7 +78,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: helm-chart-${{ steps.chart_version.outputs.version }}
-          path: .helm-packages/*.tgz
+          path: .helm-packages/
           if-no-files-found: warn
           retention-days: 30
 
